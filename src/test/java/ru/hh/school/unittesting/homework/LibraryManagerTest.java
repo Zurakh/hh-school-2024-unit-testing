@@ -11,7 +11,6 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.only;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -26,91 +25,108 @@ class LibraryManagerTest {
   @Mock
   private UserService userService;
 
-
+  // Отрицательные значения не проверяются, потому что некоторые реализации могут иметь защиту от этого
   @ParameterizedTest
   @CsvSource({
           "1, 1, 5",
           "2, 10, 7",
           "3, 40, 10",
-          "4, -4, 4",
           "5, 0, 0",
           "6, 7, 0",
-          "7, 7, -1"
   })
-  void testLibraryManagerWithAddingSuccess(String bookId, int quantity1, int quantity2) {
+  void testLibraryManagerWithAddingSuccess(String bookId, int startQuantity, int additionalQuantity) {
     // Добавление новой книги
-    libraryManager.addBook(bookId, quantity1);
-    assertEquals(libraryManager.getAvailableCopies(bookId), quantity1);
+    libraryManager.addBook(bookId, startQuantity);
+    assertEquals(libraryManager.getAvailableCopies(bookId), startQuantity);
 
-    // Изменение количества книги
-    libraryManager.addBook(bookId, quantity2);
-    assertEquals(libraryManager.getAvailableCopies(bookId), quantity1 + quantity2);
+    // Изменение количества копий
+    libraryManager.addBook(bookId, additionalQuantity);
+    assertEquals(libraryManager.getAvailableCopies(bookId), startQuantity + additionalQuantity);
   }
 
 
-  @Test
-  void libraryManagerShouldReturnFalseIfAccountInactive() {
+  @ParameterizedTest
+  @ValueSource(ints = {0, 5})
+  void libraryManagerShouldReturnFalseIfAccountInactive(int startQuantity) {
     when(userService.isUserActive("0")).thenReturn(false);
+    libraryManager.addBook("0", startQuantity);
+
     assertFalse(libraryManager.borrowBook("0", "0"));
-    Mockito.verify(notificationService, only()).notifyUser("0", "Your account is not active.");
+
+    assertEquals(libraryManager.getAvailableCopies("0"), startQuantity);
+
+    Mockito.verify(notificationService).notifyUser("0", "Your account is not active.");
   }
 
   @Test
   void libraryManagerShouldReturnFalseIfBookNotPresentInLibrary() {
     when(userService.isUserActive("1")).thenReturn(true);
+
     assertFalse(libraryManager.borrowBook("0", "1"));
+
+    assertEquals(libraryManager.getAvailableCopies("0"), 0);
   }
 
   @ParameterizedTest
   @ValueSource(ints = {0, -1, -10})
-  void libraryManagerShouldReturnFalseIfBurrowingBookQuantityIsLessOrEqualToZero(int quantity) {
-    libraryManager.addBook("1", quantity);
+  void libraryManagerShouldReturnFalseIfAvailableQuantityIsLessOrEqualToZero(int startQuantity) {
     when(userService.isUserActive("1")).thenReturn(true);
+    libraryManager.addBook("1", startQuantity);
+
     assertFalse(libraryManager.borrowBook("1", "1"));
+    assertEquals(libraryManager.getAvailableCopies("1"), startQuantity);
   }
 
 
-  @Test
-  void testBurrowingSuccess() {
+  @ParameterizedTest
+  @ValueSource(ints = {1, 10})
+  void testLibraryManagerBorrowingSuccess(int startQuantity) {
     String userId = "1";
     String bookId = "1";
     when(userService.isUserActive(userId)).thenReturn(true);
-    libraryManager.addBook(bookId, 1);
-    boolean burrowingSuccess = libraryManager.borrowBook(bookId, userId);
+    libraryManager.addBook(bookId, startQuantity);
 
-    assertTrue(burrowingSuccess);
-    assertEquals(libraryManager.getAvailableCopies(bookId), 0);
+    assertTrue(libraryManager.borrowBook(bookId, userId));
+    assertEquals(libraryManager.getAvailableCopies(bookId), startQuantity-1);
     Mockito.verify(notificationService).notifyUser(userId, "You have borrowed the book: " + bookId);
   }
 
 
-  @Test
-  void libraryManagerShouldReturnFalseWhenReturningNotBorrowedBook() {
+  @ParameterizedTest
+  @ValueSource(ints = {1, 10})
+  void libraryManagerShouldReturnFalseWhenReturningBookThatNotBorrowed(int startQuantity) {
+    libraryManager.addBook("1", startQuantity);
+
     assertFalse(libraryManager.returnBook("1", "1"));
+
+    assertEquals(libraryManager.getAvailableCopies("1"), startQuantity);
   }
 
-  @Test
-  void libraryManagerShouldReturnFalseWhenReturningBookNotBorrowedByProvidedUser() {
-    libraryManager.borrowBook("1", "2");
-    assertFalse(libraryManager.returnBook("1", "1"));
+  @ParameterizedTest
+  @ValueSource(ints = {1, 10})
+  void libraryManagerShouldReturnFalseWhenReturningBookNotBorrowedByProvidedUser(int startQuantity) {
+    libraryManager.addBook("1", startQuantity);
+    libraryManager.borrowBook("1", "1");
+
+    assertFalse(libraryManager.returnBook("1", "2"));
+    assertEquals(libraryManager.getAvailableCopies("1"), startQuantity);
   }
 
 
-  @Test
-  void testLibraryManagerBookReturn() {
+  @ParameterizedTest
+  @ValueSource(ints = {1, 10})
+  void testLibraryManagerBookReturnSuccess(int quantity) {
     String userId = "1";
     String bookId = "1";
-    int quantity = 1;
+
     when(userService.isUserActive(userId)).thenReturn(true);
 
     libraryManager.addBook(bookId, quantity);
 
     libraryManager.borrowBook(bookId, userId);
 
-    boolean returnStatus = libraryManager.returnBook(bookId, userId);
-
-    assertTrue(returnStatus);
-    assertEquals(libraryManager.getAvailableCopies(bookId),quantity);
+    assertTrue(libraryManager.returnBook(bookId, userId));
+    assertEquals(libraryManager.getAvailableCopies(bookId), quantity);
     Mockito.verify(notificationService).notifyUser(userId, "You have returned the book: " + bookId);
   }
 
