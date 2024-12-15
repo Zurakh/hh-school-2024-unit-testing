@@ -66,7 +66,7 @@ class LibraryManagerTest {
   }
 
   @Test
-  void libraryManagerShouldReturnFalseIfBookNotPresentInLibrary() {
+  void libraryManagerShouldReturnFalseIfBookNotPresentInLibraryWhenBorrowing() {
     when(userService.isUserActive("1")).thenReturn(true);
 
     assertFalse(libraryManager.borrowBook("0", "1"));
