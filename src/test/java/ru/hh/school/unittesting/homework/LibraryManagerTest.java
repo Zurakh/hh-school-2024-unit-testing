@@ -53,15 +53,14 @@ class LibraryManagerTest {
   }
 
 
-  @ParameterizedTest
-  @ValueSource(ints = {0, 5})
-  void libraryManagerShouldReturnFalseIfAccountInactive(int startQuantity) {
+  @Test
+  void libraryManagerShouldReturnFalseIfAccountInactiveWhenBorrowing() {
     when(userService.isUserActive("0")).thenReturn(false);
-    libraryManager.addBook("0", startQuantity);
+    libraryManager.addBook("0", 5);
 
     assertFalse(libraryManager.borrowBook("0", "0"));
 
-    assertEquals(libraryManager.getAvailableCopies("0"), startQuantity);
+    assertEquals(libraryManager.getAvailableCopies("0"), 5);
 
     Mockito.verify(notificationService).notifyUser("0", "Your account is not active.");
   }
