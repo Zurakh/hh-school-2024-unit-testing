@@ -26,22 +26,30 @@ class LibraryManagerTest {
   private UserService userService;
 
   // Отрицательные значения не проверяются, потому что некоторые реализации могут иметь защиту от этого
-  @ParameterizedTest
-  @CsvSource({
-          "1, 1, 5",
-          "2, 10, 7",
-          "3, 40, 10",
-          "5, 0, 0",
-          "6, 7, 0",
-  })
-  void testLibraryManagerWithAddingSuccess(String bookId, int startQuantity, int additionalQuantity) {
+  // Несколько книг добавляются, чтобы убедиться, что система может работать с больше, чем одной книгой
+  @Test
+  void testLibraryManagerWithAddingSuccess() {
     // Добавление новой книги
-    libraryManager.addBook(bookId, startQuantity);
-    assertEquals(libraryManager.getAvailableCopies(bookId), startQuantity);
+    libraryManager.addBook("0", 7);
+    libraryManager.addBook("1", 9);
+    libraryManager.addBook("2", 11);
+    libraryManager.addBook("3", 13);
+
+    assertEquals(libraryManager.getAvailableCopies("0"), 7);
+    assertEquals(libraryManager.getAvailableCopies("1"), 9);
+    assertEquals(libraryManager.getAvailableCopies("2"), 11);
+    assertEquals(libraryManager.getAvailableCopies("3"), 13);
 
     // Изменение количества копий
-    libraryManager.addBook(bookId, additionalQuantity);
-    assertEquals(libraryManager.getAvailableCopies(bookId), startQuantity + additionalQuantity);
+    libraryManager.addBook("0", 0);
+    libraryManager.addBook("1", 1);
+    libraryManager.addBook("2", 9);
+    libraryManager.addBook("3", 6);
+
+    assertEquals(libraryManager.getAvailableCopies("0"), 7);
+    assertEquals(libraryManager.getAvailableCopies("1"), 10);
+    assertEquals(libraryManager.getAvailableCopies("2"), 20);
+    assertEquals(libraryManager.getAvailableCopies("3"), 19);
   }
 
 
