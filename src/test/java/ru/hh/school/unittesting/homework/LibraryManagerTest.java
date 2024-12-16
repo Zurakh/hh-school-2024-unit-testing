@@ -35,10 +35,10 @@ class LibraryManagerTest {
     libraryManager.addBook("2", 11);
     libraryManager.addBook("3", 13);
 
-    assertEquals(libraryManager.getAvailableCopies("0"), 7);
-    assertEquals(libraryManager.getAvailableCopies("1"), 9);
-    assertEquals(libraryManager.getAvailableCopies("2"), 11);
-    assertEquals(libraryManager.getAvailableCopies("3"), 13);
+    assertEquals(7, libraryManager.getAvailableCopies("0"));
+    assertEquals(9, libraryManager.getAvailableCopies("1"));
+    assertEquals(11, libraryManager.getAvailableCopies("2"));
+    assertEquals(13, libraryManager.getAvailableCopies("3"));
 
     // Изменение количества копий
     libraryManager.addBook("0", 0);
@@ -46,10 +46,10 @@ class LibraryManagerTest {
     libraryManager.addBook("2", 9);
     libraryManager.addBook("3", 6);
 
-    assertEquals(libraryManager.getAvailableCopies("0"), 7);
-    assertEquals(libraryManager.getAvailableCopies("1"), 10);
-    assertEquals(libraryManager.getAvailableCopies("2"), 20);
-    assertEquals(libraryManager.getAvailableCopies("3"), 19);
+    assertEquals(7, libraryManager.getAvailableCopies("0"));
+    assertEquals(10, libraryManager.getAvailableCopies("1"));
+    assertEquals(20, libraryManager.getAvailableCopies("2"));
+    assertEquals(19, libraryManager.getAvailableCopies("3"));
   }
 
 
@@ -60,7 +60,7 @@ class LibraryManagerTest {
 
     assertFalse(libraryManager.borrowBook("0", "0"));
 
-    assertEquals(libraryManager.getAvailableCopies("0"), 5);
+    assertEquals(5, libraryManager.getAvailableCopies("0"));
 
     Mockito.verify(notificationService).notifyUser("0", "Your account is not active.");
   }
@@ -71,7 +71,7 @@ class LibraryManagerTest {
 
     assertFalse(libraryManager.borrowBook("0", "1"));
 
-    assertEquals(libraryManager.getAvailableCopies("0"), 0);
+    assertEquals(0, libraryManager.getAvailableCopies("0"));
   }
 
   @ParameterizedTest
@@ -81,7 +81,7 @@ class LibraryManagerTest {
     libraryManager.addBook("1", startQuantity);
 
     assertFalse(libraryManager.borrowBook("1", "1"));
-    assertEquals(libraryManager.getAvailableCopies("1"), startQuantity);
+    assertEquals(startQuantity, libraryManager.getAvailableCopies("1"));
   }
 
 
@@ -94,7 +94,7 @@ class LibraryManagerTest {
     libraryManager.addBook(bookId, startQuantity);
 
     assertTrue(libraryManager.borrowBook(bookId, userId));
-    assertEquals(libraryManager.getAvailableCopies(bookId), startQuantity-1);
+    assertEquals(startQuantity-1, libraryManager.getAvailableCopies(bookId));
     Mockito.verify(notificationService).notifyUser(userId, "You have borrowed the book: " + bookId);
   }
 
@@ -106,17 +106,23 @@ class LibraryManagerTest {
 
     assertFalse(libraryManager.returnBook("1", "1"));
 
-    assertEquals(libraryManager.getAvailableCopies("1"), startQuantity);
+    assertEquals(startQuantity, libraryManager.getAvailableCopies("1"));
   }
 
   @ParameterizedTest
   @ValueSource(ints = {1, 10})
   void libraryManagerShouldReturnFalseWhenReturningBookNotBorrowedByProvidedUser(int startQuantity) {
+    when(userService.isUserActive("1")).thenReturn(true);
+
     libraryManager.addBook("1", startQuantity);
+
+    // Количество доступных копий уменьшится на 1
     libraryManager.borrowBook("1", "1");
 
     assertFalse(libraryManager.returnBook("1", "2"));
-    assertEquals(libraryManager.getAvailableCopies("1"), startQuantity);
+
+    // Количество доступных книг не восстановится
+    assertEquals(startQuantity-1, libraryManager.getAvailableCopies("1"));
   }
 
 
@@ -133,7 +139,7 @@ class LibraryManagerTest {
     libraryManager.borrowBook(bookId, userId);
 
     assertTrue(libraryManager.returnBook(bookId, userId));
-    assertEquals(libraryManager.getAvailableCopies(bookId), quantity);
+    assertEquals(quantity, libraryManager.getAvailableCopies(bookId));
     Mockito.verify(notificationService).notifyUser(userId, "You have returned the book: " + bookId);
   }
 
@@ -153,6 +159,11 @@ class LibraryManagerTest {
           "1, false, true, 0.4",
           "1, true, false, 0.75",
           "1, true, true, 0.6",
+
+          "0, false, false, 0",
+          "0, false, true, 0",
+          "0, true, false, 0",
+          "0, true, true, 0",
   })
   void libraryManagerCalculateFee(int overdueDays, boolean isBestseller, boolean isPremiumMember, double actualAnswer) {
     assertEquals(libraryManager.calculateDynamicLateFee(overdueDays, isBestseller, isPremiumMember), actualAnswer);
